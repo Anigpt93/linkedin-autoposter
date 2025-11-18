@@ -1,0 +1,37 @@
+name: Publish on Approval
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.event.comment.body == 'approve'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-dotenv
+
+      - name: Extract draft JSON to artifact
+        run: |
+          echo "Parsing issue body..."
+          # extract the JSON block from the issue body using a simple grep between ```json and ```
+          ISSUE_BODY="${{ github.event.issue.body }}"
+          echo "$ISSUE_BODY" > issue_body.txt
+          python3 .github/scripts/parse_issue_and_publish.py \
+            --issue-file issue_body.txt
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
