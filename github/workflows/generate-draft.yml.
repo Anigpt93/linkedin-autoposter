@@ -1,0 +1,47 @@
+name: Generate Draft Post
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # daily at 06:00 UTC, change if you want
+  workflow_dispatch: {} # manual trigger from Actions tab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-dotenv
+
+      - name: Run draft generator
+        env:
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p artifacts
+          python3 .github/scripts/generate_draft.py > artifacts/draft_output.json
+          cat artifacts/draft_output.json
+
+      - name: Create GitHub issue with draft
+        uses: peter-evans/create-issue@v4
+        with:
+          title: "Draft Post for Review - ${{ github.run_number }} - ${{ github.event_name }}"
+          body: |
+            ## LinkedIn Draft Preview
+
+            **Topic**: ${{ github.run_number }}
+
+            **Draft and Visual**:
+            ````json
+            $(cat artifacts/draft_output.json)
+            ````
+            Please review. If ready to publish comment `approve` on this issue.
